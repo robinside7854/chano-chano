@@ -1,0 +1,36 @@
+name: D-RAM Price Scraper
+
+on:
+  schedule:
+    # 매일 KST 09:00 = UTC 00:00 (평일만)
+    - cron: '0 0 * * 1-5'
+  workflow_dispatch: # 수동 실행 버튼
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run scraper
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/scrape.mjs
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::스크래핑 실패 — TrendForce HTML 구조 변경 가능성. scripts/scrape.mjs 파서 확인 필요"
