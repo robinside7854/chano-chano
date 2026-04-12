@@ -1,8 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DramPrice } from '@/types/dram';
 import Link from 'next/link';
+
+type SortKey = 'item_name' | 'daily_high' | 'daily_low' | 'session_avg' | 'session_high' | 'session_low' | 'session_change';
+type SortDir = 'asc' | 'desc';
+
+function sortItems(items: DramPrice[], key: SortKey, dir: SortDir): DramPrice[] {
+  return [...items].sort((a, b) => {
+    const av = a[key];
+    const bv = b[key];
+    // null은 항상 맨 뒤
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+    return dir === 'asc' ? cmp : -cmp;
+  });
+}
+
+function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
+  if (col !== sortKey) {
+    return <span className="ml-1 text-gray-300 text-xs">⇅</span>;
+  }
+  return <span className="ml-1 text-blue-500 text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+}
 
 const CATEGORY_LABELS: Record<string, string> = {
   chip: 'IC 칩',
@@ -76,11 +99,24 @@ export default function DashboardClient({
   latestDate: string | null;
 }) {
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('item_name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
-  const grouped = CATEGORY_ORDER.reduce<Record<string, DramPrice[]>>((acc, cat) => {
-    acc[cat] = prices.filter(p => p.item_category === cat);
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      // 숫자 컬럼은 내림차순(높은값 먼저), 품목명은 오름차순
+      setSortDir(key === 'item_name' ? 'asc' : 'desc');
+    }
+  };
+
+  const grouped = useMemo(() => CATEGORY_ORDER.reduce<Record<string, DramPrice[]>>((acc, cat) => {
+    const items = prices.filter(p => p.item_category === cat);
+    acc[cat] = sortItems(items, sortKey, sortDir);
     return acc;
-  }, {});
+  }, {}), [prices, sortKey, sortDir]);
 
   const displayCategories = activeCategory === 'all'
     ? CATEGORY_ORDER.filter(c => grouped[c].length > 0)
@@ -161,13 +197,30 @@ export default function DashboardClient({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="px-3 py-2.5 text-left font-medium text-gray-600">품목</th>
-                      <th className="px-3 py-2.5 text-center font-medium text-gray-600">일중 고가</th>
-                      <th className="px-3 py-2.5 text-center font-medium text-gray-600">일중 저가</th>
-                      <th className="px-3 py-2.5 text-center font-medium text-gray-600">세션 평균</th>
-                      <th className="px-3 py-2.5 text-center font-medium text-gray-600">세션 고가</th>
-                      <th className="px-3 py-2.5 text-center font-medium text-gray-600">세션 저가</th>
-                      <th className="px-3 py-2.5 text-center font-medium text-gray-600">변동률</th>
+                      {(
+                        [
+                          { key: 'item_name', label: '품목', align: 'left' },
+                          { key: 'daily_high', label: '일중 고가', align: 'center' },
+                          { key: 'daily_low', label: '일중 저가', align: 'center' },
+                          { key: 'session_avg', label: '세션 평균', align: 'center' },
+                          { key: 'session_high', label: '세션 고가', align: 'center' },
+                          { key: 'session_low', label: '세션 저가', align: 'center' },
+                          { key: 'session_change', label: '변동률', align: 'center' },
+                        ] as { key: SortKey; label: string; align: string }[]
+                      ).map(col => (
+                        <th
+                          key={col.key}
+                          onClick={() => handleSort(col.key)}
+                          className={`px-3 py-2.5 font-medium text-gray-600 cursor-pointer select-none
+                            hover:bg-gray-100 transition-colors
+                            ${col.align === 'left' ? 'text-left' : 'text-center'}
+                            ${sortKey === col.key ? 'text-blue-600 bg-blue-50' : ''}
+                          `}
+                        >
+                          {col.label}
+                          <SortIcon col={col.key} sortKey={sortKey} sortDir={sortDir} />
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
