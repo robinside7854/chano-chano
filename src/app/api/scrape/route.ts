@@ -29,10 +29,21 @@ function getCategory(itemName: string): string {
   return 'chip';
 }
 
+function extractSiteDate($: ReturnType<typeof cheerio.load>): string | null {
+  let siteDate: string | null = null;
+  $('*').each((_, el) => {
+    if (siteDate) return false;
+    const children = $(el).children();
+    if (children.length > 0) return;
+    const text = $(el).text();
+    const match = text.match(/Last Update\s+(\d{4}-\d{2}-\d{2})/);
+    if (match) { siteDate = match[1]; return false; }
+  });
+  return siteDate;
+}
+
 export async function POST() {
   try {
-    const today = new Date().toISOString().split('T')[0];
-
     const res = await fetch(TARGET_URL, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
@@ -46,12 +57,18 @@ export async function POST() {
 
     const html = await res.text();
     const $ = cheerio.load(html);
+
+    // 사이트 날짜 추출 (시스템 날짜 대신 사용)
+    const siteDate = extractSiteDate($);
+    const date = siteDate ?? new Date().toISOString().split('T')[0];
+
     const allPrices: Record<string, unknown>[] = [];
 
     $('table').each((_, table) => {
       $(table).find('tbody tr').each((_, row) => {
         const cells = $(row).find('td');
-        if (cells.length < 6) return;
+        // 8셀(spot/module/gddr)만 파싱, 7셀(contract)·3셀(lpddr) 제외
+        if (cells.length !== 8) return;
 
         const itemName = $(cells[0]).text().trim();
         if (!itemName || itemName.length < 3) return;
@@ -61,10 +78,10 @@ export async function POST() {
         const sessionHigh = parsePrice($(cells[3]).text());
         const sessionLow = parsePrice($(cells[4]).text());
         const sessionAvg = parsePrice($(cells[5]).text());
-        const sessionChange = cells.length > 6 ? parsePrice($(cells[6]).text()) : null;
+        const sessionChange = parsePrice($(cells[6]).text());
 
         allPrices.push({
-          date: today,
+          date,
           item_name: itemName,
           item_category: getCategory(itemName),
           daily_high: dailyHigh,
@@ -88,7 +105,7 @@ export async function POST() {
 
     if (error) throw new Error(error.message);
 
-    return NextResponse.json({ success: true, count: allPrices.length, date: today });
+    return NextResponse.json({ success: true, count: allPrices.length, date });
   } catch (err) {
     const message = err instanceof Error ? err.message : '알 수 없는 오류';
     return NextResponse.json({ error: message }, { status: 500 });

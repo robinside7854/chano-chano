@@ -53,14 +53,33 @@ function getCategory(itemName) {
 }
 
 /**
- * TrendForce HTML 파싱
+ * HTML에서 사이트 업데이트 날짜 추출 ("Last Update 2026-04-10 18:10 (GMT+8)" → "2026-04-10")
+ * 첫 번째 Last Update = DRAM Spot 날짜 사용
  */
-function parsePriceTable($, table, today) {
+function extractSiteDate($) {
+  let siteDate = null;
+  $('*').each((_, el) => {
+    if (siteDate) return false; // break
+    const text = $(el).children().length === 0 ? $(el).text() : null;
+    if (!text) return;
+    const match = text.match(/Last Update\s+(\d{4}-\d{2}-\d{2})/);
+    if (match) siteDate = match[1];
+  });
+  return siteDate;
+}
+
+/**
+ * TrendForce HTML 파싱
+ * - 8셀 행만 파싱: item|daily_h|daily_l|sess_h|sess_l|sess_avg|change%|icon
+ * - 7셀(Contract)·3셀(LPDDR) 등 다른 구조는 자동 제외
+ */
+function parsePriceTable($, table, date) {
   const results = [];
 
   $(table).find('tbody tr').each((_, row) => {
     const cells = $(row).find('td');
-    if (cells.length < 6) return;
+    // 8셀(spot/module/gddr 형식)만 처리, 7셀(contract)·3셀(lpddr) 제외
+    if (cells.length !== 8) return;
 
     const itemName = $(cells[0]).text().trim();
     if (!itemName || itemName.length < 3) return;
@@ -70,10 +89,10 @@ function parsePriceTable($, table, today) {
     const sessionHigh = parsePrice($(cells[3]).text());
     const sessionLow = parsePrice($(cells[4]).text());
     const sessionAvg = parsePrice($(cells[5]).text());
-    const sessionChange = parsePrice($(cells[6])?.text());
+    const sessionChange = parsePrice($(cells[6]).text());
 
     results.push({
-      date: today,
+      date,
       item_name: itemName,
       item_category: getCategory(itemName),
       daily_high: dailyHigh,
@@ -90,8 +109,7 @@ function parsePriceTable($, table, today) {
 }
 
 async function main() {
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  console.log(`📅 수집 날짜: ${today}`);
+  const systemDate = new Date().toISOString().split('T')[0];
   console.log(`🌐 URL: ${TARGET_URL}`);
 
   // 1. HTML 가져오기
@@ -117,11 +135,17 @@ async function main() {
 
   // 2. 파싱
   const $ = cheerio.load(html);
+
+  // 사이트 날짜 추출 (시스템 날짜 대신 사이트 기준 날짜 사용)
+  const siteDate = extractSiteDate($);
+  const date = siteDate || systemDate;
+  console.log(`📅 사이트 날짜: ${siteDate ?? '추출 실패'} → 저장 날짜: ${date}`);
+
   const allPrices = [];
 
-  // price-table 클래스를 가진 테이블 전체 파싱
+  // 8셀 형식 테이블만 파싱 (spot/module/gddr) — contract/lpddr 자동 제외
   $('table').each((_, table) => {
-    const prices = parsePriceTable($, table, today);
+    const prices = parsePriceTable($, table, date);
     allPrices.push(...prices);
   });
 
