@@ -28,14 +28,20 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  chip: 'IC 칩',
-  module: '모듈 (DIMM)',
-  server: '서버 DRAM',
-  gddr: 'GDDR',
-  wafer: '웨이퍼',
+  chip: 'DRAM Spot Price',
+  module: 'Module Spot Price',
+  server: 'DRAM Contract Price',
+  gddr: 'GDDR Spot Price',
+  wafer: 'DRAM Spot Price (Wafer)',
 };
 
-const TRENDFORCE_URL = 'https://www.trendforce.com/price/dram/dram_spot';
+const CATEGORY_URLS: Record<string, string> = {
+  chip: 'https://www.trendforce.com/price/dram/dram_spot',
+  module: 'https://www.trendforce.com/price/dram/module_spot',
+  server: 'https://www.trendforce.com/price/dram/dram_contract',
+  gddr: 'https://www.trendforce.com/price/dram/gddr_spot',
+  wafer: 'https://www.trendforce.com/price/dram/dram_spot',
+};
 
 const CATEGORY_ORDER = ['chip', 'module', 'server', 'gddr', 'wafer'];
 
@@ -192,9 +198,19 @@ export default function DashboardClient({
         ) : (
           displayCategories.map(cat => (
             <div key={cat} className="mb-6">
-              <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                {CATEGORY_LABELS[cat]}
-              </h2>
+              <a
+                href={CATEGORY_URLS[cat]}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-1.5 mb-2"
+              >
+                <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide group-hover:text-blue-600 transition-colors">
+                  {CATEGORY_LABELS[cat]}
+                </h2>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
@@ -234,14 +250,7 @@ export default function DashboardClient({
                         }`}
                       >
                         <td className="px-3 py-2.5 font-medium text-gray-800 max-w-xs">
-                          <a
-                            href={TRENDFORCE_URL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:text-blue-600 hover:underline transition-colors cursor-pointer"
-                          >
-                            {item.item_name}
-                          </a>
+                          {item.item_name}
                         </td>
                         <td className="px-3 py-2 text-center text-gray-700">
                           {item.daily_high != null ? `$${item.daily_high.toFixed(3)}` : '-'}
