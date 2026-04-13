@@ -99,6 +99,12 @@ export default function TrendsClient({
     );
   };
 
+  const isAllSelected = selectedItems.length === items.length;
+
+  const toggleAll = () => {
+    setSelectedItems(isAllSelected ? [] : [...items]);
+  };
+
   // AI 인사이트 (규칙 기반)
   const insights = useMemo(() => {
     const result: string[] = [];
@@ -166,7 +172,15 @@ export default function TrendsClient({
           {/* 사이드바: 품목 선택 */}
           <aside className="w-56 shrink-0">
             <div className="bg-white rounded-xl border border-gray-200 p-3 sticky top-20">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">품목 선택</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">품목 선택</p>
+                <button
+                  onClick={toggleAll}
+                  className="text-xs text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                >
+                  {isAllSelected ? '전체 해제' : '모두 선택'}
+                </button>
+              </div>
               <div className="space-y-1 max-h-[60vh] overflow-y-auto">
                 {items.map((item, i) => (
                   <label key={item} className="flex items-center gap-2 cursor-pointer group">
