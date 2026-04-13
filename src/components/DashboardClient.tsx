@@ -35,6 +35,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   wafer: '웨이퍼',
 };
 
+const TRENDFORCE_URL = 'https://www.trendforce.com/price/dram/dram_spot';
+
 const CATEGORY_ORDER = ['chip', 'module', 'server', 'gddr', 'wafer'];
 
 function ChangeCell({ value, direction }: { value: number | null; direction: string | null }) {
@@ -150,7 +152,7 @@ export default function DashboardClient({
             <p className="text-sm text-gray-500">
               {latestDate ? `마지막 수집: ${formatDate(latestDate)}` : '아직 데이터가 없습니다'}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">매일 오전 9시 자동 수집 (GitHub Actions)</p>
+            <p className="text-xs text-gray-400 mt-0.5">매일 오전 9시·오후 6시 자동 수집 (GitHub Actions)</p>
           </div>
           <div className="flex gap-1 text-xs">
             <span className="inline-flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded">
@@ -232,7 +234,14 @@ export default function DashboardClient({
                         }`}
                       >
                         <td className="px-3 py-2.5 font-medium text-gray-800 max-w-xs">
-                          {item.item_name}
+                          <a
+                            href={TRENDFORCE_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-blue-600 hover:underline transition-colors cursor-pointer"
+                          >
+                            {item.item_name}
+                          </a>
                         </td>
                         <td className="px-3 py-2 text-center text-gray-700">
                           {item.daily_high != null ? `$${item.daily_high.toFixed(3)}` : '-'}
